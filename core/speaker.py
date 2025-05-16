@@ -2,10 +2,10 @@
 # Açıklama: Gerçek zamanlı sesli bildirim sistemi.
 # Amaç: Kuyruk tabanlı yapı ile pyttsx3 motoru kullanarak konuşmaları yönetmek.
 
-import threading
 import pyttsx3
 import queue
 import time
+import threading
 
 # --- Başlangıç Ayarları ---
 engine = pyttsx3.init()  # Ses motorunu başlat

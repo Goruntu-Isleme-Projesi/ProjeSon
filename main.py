@@ -8,11 +8,14 @@
 # --- Kütüphane İçe Aktarımları ---
 import cv2
 import time
+import threading
 from core.detector import ObjectDetector
 from core.speaker import speak, currently_speaking
 from core.alarm import play_alarm
 from core.utils import calculate_distance, determine_position, REAL_WIDTHS
 from core.logic import classify_object, generate_warning_text
+
+speak_lock = threading.Lock()
 
 # --- Başlangıç Ayarları ---
 model_path = "models/my_model.pt"  # Kullanılacak YOLOv8 modelinin yolu
@@ -34,6 +37,7 @@ last_spoken_time = 0
 last_label = None
 last_position = None
 last_distance = None
+draw_lines = False  # 9 bölge çizgilerini aç/kapat
 
 # TODO: Şu an konuşmalar sıraya alınmadan gönderiliyor. İleride öncelik bazlı konuşma sistemi kurulabilir.
 # TODO: bir konuşma oluyor sonra diğeri olmuyor ses kısmında sıkıntı var önceliklendirme cart curt bişiler yapılamlı ben yapamadım.
@@ -96,7 +100,7 @@ while True:
 
                 # --- Tehlikeli nesne varsa alarm çal ---
                 if classify_object(closest_obj) == "dangerous" or distance_desc == "very close":
-                    play_alarm()
+                    threading.Thread(target=play_alarm()).start()
 
                 last_label = closest_obj
                 last_position = position
@@ -106,14 +110,14 @@ while True:
     if not currently_speaking and last_detected_text and (time.time() - last_spoken_time > 2):
         print(last_detected_text)
         if speech_enabled:
-            speak(last_detected_text)
+            #speak(last_detected_text)
+            threading.Thread(target=speak(last_detected_text)).start()
             last_spoken_time = time.time()
             last_detected_text = None
 
     # --- Ekrana Sonuçları Çiz ---
     annotated_frame = result.plot()
 
-    draw_lines = False  # 9 bölge çizgilerini aç/kapat
     if draw_lines:
         cv2.line(annotated_frame, (width // 3, 0), (width // 3, height), (255, 0, 0), 2)
         cv2.line(annotated_frame, (2 * width // 3, 0), (2 * width // 3, height), (255, 0, 0), 2)
@@ -135,6 +139,9 @@ while True:
     elif key == ord('p'):
         paused = not paused
         print("Video paused." if paused else "Video resumed.")
+    elif key == ord('d'):
+        draw_lines = not draw_lines
+        print("Draw Lines on." if draw_lines else "Draw Lines off.")
     elif key == ord('f'):
         current_frame = cap.get(cv2.CAP_PROP_POS_FRAMES)
         cap.set(cv2.CAP_PROP_POS_FRAMES, current_frame + fps * skip_seconds)
